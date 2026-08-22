@@ -1,0 +1,12 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "infrastructure/persistence/postgres/db/schema.sql"
+    queries: "infrastructure/persistence/postgres/db/queries"
+    gen:
+      go:
+        package: "sqlc"
+        out: "infrastructure/persistence/postgres/sqlc"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_empty_slices: true

@@ -1,0 +1,3 @@
+.cache/
+.gotest-cache/
+.gotest-cache-*/
