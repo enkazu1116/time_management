@@ -1,0 +1,19 @@
+services:
+  api:
+    build:
+      context: .
+    environment:
+      PORT: "8080"
+      BASE_SEPOLIA_RPC_URL: ${BASE_SEPOLIA_RPC_URL:?set BASE_SEPOLIA_RPC_URL}
+      EAS_PRIVATE_KEY: ${EAS_PRIVATE_KEY:?set EAS_PRIVATE_KEY}
+      EAS_SCHEMA_UID: ${EAS_SCHEMA_UID:?set EAS_SCHEMA_UID}
+      EAS_SUBJECT_HMAC_SECRET: ${EAS_SUBJECT_HMAC_SECRET:?set EAS_SUBJECT_HMAC_SECRET}
+      ATTEST_ADMIN_TOKEN: ${ATTEST_ADMIN_TOKEN:?set ATTEST_ADMIN_TOKEN}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
