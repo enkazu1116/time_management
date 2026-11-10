@@ -1,3 +1,6 @@
 .cache/
 .gotest-cache/
 .gotest-cache-*/
+.env
+.env.*
+!.env.example
