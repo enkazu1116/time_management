@@ -46,6 +46,36 @@ func TestDigestDayUsesRemainingFieldsAsSortTieBreakers(t *testing.T) {
 	}
 }
 
+func TestDigestDayUsesConfiguredDayBoundary(t *testing.T) {
+	tokyo := mustLocation(t, "Asia/Tokyo")
+	day := time.Date(2026, time.November, 10, 0, 0, 0, 0, tokyo)
+	records := DayRecords{
+		UserID:   "user-a",
+		Day:      day,
+		Location: tokyo,
+		BreakLogs: []workrecordmodel.BreakLog{{
+			BreakLogID: "break-a",
+			WorkLogID:  "work-a",
+			UserID:     "user-a",
+			StartedAt:  time.Date(2026, time.November, 9, 15, 30, 0, 0, time.UTC),
+			EndedAt:    time.Date(2026, time.November, 9, 16, 0, 0, 0, time.UTC),
+		}},
+	}
+	if _, err := DigestDay(records); err != nil {
+		t.Fatalf("00:30 JST should belong to the November 10 JST day: %v", err)
+	}
+}
+
+func TestDigestDayIncludesLocationName(t *testing.T) {
+	records := fixture()
+	utcRecords := clone(records)
+	utcRecords.Location = time.UTC
+
+	if mustDigest(t, records) == mustDigest(t, utcRecords) {
+		t.Fatal("DigestDay() did not change with the day-boundary location")
+	}
+}
+
 func TestDigestDayChangesWhenAFieldChanges(t *testing.T) {
 	oneNanosecond := time.Nanosecond
 	oneDurationUnit := time.Duration(1)
@@ -136,7 +166,7 @@ func TestDigestDayChangesWhenAFieldChanges(t *testing.T) {
 }
 
 func TestDigestDayIncludesUserAndCollectionMembership(t *testing.T) {
-	emptyA := DayRecords{UserID: "user-a", Day: time.Date(2026, time.November, 10, 0, 0, 0, 0, time.UTC)}
+	emptyA := DayRecords{UserID: "user-a", Day: time.Date(2026, time.November, 10, 0, 0, 0, 0, time.UTC), Location: time.UTC}
 	emptyB := emptyA
 	emptyB.UserID = "user-b"
 	if mustDigest(t, emptyA) == mustDigest(t, emptyB) {
@@ -152,7 +182,7 @@ func TestDigestDayIncludesUserAndCollectionMembership(t *testing.T) {
 }
 
 func TestDigestDayGoldenVector(t *testing.T) {
-	const want = "c6e61fb4cdc39e8228a3760ea09fa62498169e88c5841e288c5d654347b4d696"
+	const want = "207e6b4c829fa1212eef2c300d1e09ebf6a398bd29f89e05cb34da25e801136b"
 	digest := mustDigest(t, fixture())
 	got := hex.EncodeToString(digest[:])
 	if got != want {
@@ -162,10 +192,11 @@ func TestDigestDayGoldenVector(t *testing.T) {
 
 func TestDigestDayEmptyDay(t *testing.T) {
 	records := DayRecords{
-		UserID: "00000000-0000-0000-0000-000000000001",
-		Day:    time.Date(2026, time.November, 10, 18, 30, 0, 0, time.FixedZone("JST", 9*60*60)),
+		UserID:   "00000000-0000-0000-0000-000000000001",
+		Day:      time.Date(2026, time.November, 10, 18, 30, 0, 0, time.FixedZone("JST", 9*60*60)),
+		Location: mustLocation(t, "Asia/Tokyo"),
 	}
-	const want = "74b1144d06b9e8bc1440f1e74c0a365f57dc97f6734998c3be7030f7f11f8b55"
+	const want = "f8797c322929e94df86902b86516c941eadc1b45838713044d5247ee4b7bc718"
 	digest := mustDigest(t, records)
 	got := hex.EncodeToString(digest[:])
 	if got != want {
@@ -192,11 +223,16 @@ func mustDigest(t *testing.T, records DayRecords) [32]byte {
 
 func fixture() DayRecords {
 	day := time.Date(2026, time.November, 10, 0, 0, 0, 0, time.UTC)
+	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		panic(err)
+	}
 	resumedAt := day.Add(11*time.Hour + 15*time.Minute)
 	resumeDuration := 15 * time.Minute
 	records := DayRecords{
-		UserID: "00000000-0000-0000-0000-000000000001",
-		Day:    day.Add(12 * time.Hour),
+		UserID:   "00000000-0000-0000-0000-000000000001",
+		Day:      day.Add(12 * time.Hour),
+		Location: tokyo,
 		WorkLogs: []workrecordmodel.WorkLog{{
 			WorkLogID: "work-b", UserID: "00000000-0000-0000-0000-000000000001",
 			WorkType: workrecordmodel.WorkType{WorkTypeID: "type-b", WorkTypeName: "Build"},
@@ -252,6 +288,15 @@ func fixture() DayRecords {
 		}},
 	}
 	return records
+}
+
+func mustLocation(t *testing.T, name string) *time.Location {
+	t.Helper()
+	location, err := time.LoadLocation(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return location
 }
 
 func clone(records DayRecords) DayRecords {

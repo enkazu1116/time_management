@@ -23,16 +23,18 @@ const (
 )
 
 var (
-	ErrUserIDRequired = errors.New("integrity: user ID is required")
-	ErrDayRequired    = errors.New("integrity: day is required")
+	ErrUserIDRequired   = errors.New("integrity: user ID is required")
+	ErrDayRequired      = errors.New("integrity: day is required")
+	ErrLocationRequired = errors.New("integrity: day location is required")
 )
 
 // DayRecords contains the stored records covered by one daily digest.
 //
-// A day is the half-open UTC interval [00:00:00, 00:00:00 the next day).
+// A day is the half-open interval [00:00:00, 00:00:00 the next day) in
+// Location. Callers must pass the business location (for example Asia/Tokyo).
 // Work logs, daily tasks, and daily achievements belong to the day named by
 // WorkDate; break logs belong to the day in which StartedAt occurs. Weekly
-// tasks are those whose WeekStartDate is the UTC Monday for the containing
+// tasks are those whose WeekStartDate is the local Monday for the containing
 // week. Callers must supply only records selected by those rules.
 //
 // DailySummarySet is used instead of only DailyAchievement so the persisted
@@ -40,6 +42,7 @@ var (
 type DayRecords struct {
 	UserID            string
 	Day               time.Time
+	Location          *time.Location
 	WorkLogs          []workrecordmodel.WorkLog
 	BreakLogs         []workrecordmodel.BreakLog
 	DailyTasks        []taskprogressmodel.DailyTask
@@ -61,7 +64,8 @@ func DigestDay(records DayRecords) ([sha256.Size]byte, error) {
 // Strings and byte sequences are prefixed by an unsigned 64-bit big-endian
 // length. Signed integers and durations are 64-bit big-endian values; floats
 // use their IEEE-754 bits; optional values have a one-byte presence marker.
-// Timestamps are UTC with exactly nanosecond precision. Sections are ordered as
+// Timestamps are UTC with exactly nanosecond precision. The IANA location name
+// is included immediately after the local calendar date. Sections are ordered as
 // work logs, break logs, daily tasks, weekly tasks, and daily achievements.
 // Within each section records are sorted by ID, with every remaining field in
 // the field order below acting as deterministic tie-breakers. Input slices are
@@ -74,7 +78,8 @@ func SerializeDay(records DayRecords) ([]byte, error) {
 	var out encoder
 	out.rawString(CanonicalVersion)
 	out.byte(0)
-	out.string(records.Day.UTC().Format("2006-01-02"))
+	out.string(records.Day.In(records.Location).Format("2006-01-02"))
+	out.string(records.Location.String())
 	out.string(records.UserID)
 	out.section("work_logs", encodeRecords(records.WorkLogs, encodeWorkLog))
 	out.section("break_logs", encodeRecords(records.BreakLogs, encodeBreakLog))
@@ -91,14 +96,17 @@ func validateDay(records DayRecords) error {
 	if records.Day.IsZero() {
 		return ErrDayRequired
 	}
-	day := utcDate(records.Day)
-	week := utcWeekStart(day)
+	if records.Location == nil {
+		return ErrLocationRequired
+	}
+	day := dateInLocation(records.Day, records.Location)
+	week := weekStart(day)
 
 	for i, record := range records.WorkLogs {
 		if record.UserID != records.UserID {
 			return fmt.Errorf("integrity: work log %d has a different user", i)
 		}
-		if !utcDate(record.WorkDate).Equal(day) {
+		if !sameCalendarDate(record.WorkDate, day) {
 			return fmt.Errorf("integrity: work log %d is outside the day", i)
 		}
 	}
@@ -106,7 +114,7 @@ func validateDay(records DayRecords) error {
 		if record.UserID != records.UserID {
 			return fmt.Errorf("integrity: break log %d has a different user", i)
 		}
-		if !utcDate(record.StartedAt).Equal(day) {
+		if !dateInLocation(record.StartedAt, records.Location).Equal(day) {
 			return fmt.Errorf("integrity: break log %d is outside the day", i)
 		}
 	}
@@ -114,7 +122,7 @@ func validateDay(records DayRecords) error {
 		if record.UserID != records.UserID {
 			return fmt.Errorf("integrity: daily task %d has a different user", i)
 		}
-		if !utcDate(record.WorkDate).Equal(day) {
+		if !sameCalendarDate(record.WorkDate, day) {
 			return fmt.Errorf("integrity: daily task %d is outside the day", i)
 		}
 		if math.IsNaN(record.ProgressRate) || math.IsInf(record.ProgressRate, 0) {
@@ -125,7 +133,7 @@ func validateDay(records DayRecords) error {
 		if record.UserID != records.UserID {
 			return fmt.Errorf("integrity: weekly task %d has a different user", i)
 		}
-		if !utcDate(record.WeekStartDate).Equal(week) {
+		if !sameCalendarDate(record.WeekStartDate, week) {
 			return fmt.Errorf("integrity: weekly task %d is outside the containing week", i)
 		}
 	}
@@ -133,19 +141,24 @@ func validateDay(records DayRecords) error {
 		if record.Achievement.UserID != records.UserID {
 			return fmt.Errorf("integrity: daily achievement %d has a different user", i)
 		}
-		if !utcDate(record.Achievement.WorkDate).Equal(day) {
+		if !sameCalendarDate(record.Achievement.WorkDate, day) {
 			return fmt.Errorf("integrity: daily achievement %d is outside the day", i)
 		}
 	}
 	return nil
 }
 
-func utcDate(value time.Time) time.Time {
-	value = value.UTC()
-	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, time.UTC)
+func dateInLocation(value time.Time, location *time.Location) time.Time {
+	value = value.In(location)
+	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, location)
 }
 
-func utcWeekStart(day time.Time) time.Time {
+func sameCalendarDate(value, day time.Time) bool {
+	year, month, date := value.Date()
+	return year == day.Year() && month == day.Month() && date == day.Day()
+}
+
+func weekStart(day time.Time) time.Time {
 	offset := (int(day.Weekday()) + 6) % 7
 	return day.AddDate(0, 0, -offset)
 }
