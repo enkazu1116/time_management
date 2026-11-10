@@ -1,8 +1,10 @@
 package achievement
 
 import (
+	"errors"
 	"time"
 
+	repositories "time_management/domain/time_tracking/subdomains/achievement/interfaces/repositories"
 	achievementmodel "time_management/domain/time_tracking/subdomains/achievement/model"
 	analysismodel "time_management/domain/time_tracking/subdomains/analysis/model"
 	"time_management/infrastructure/persistence/memory"
@@ -29,7 +31,11 @@ func (r *DailyAchievementRepository) Delete(dailyAchievementID string) error {
 }
 
 func (r *DailyAchievementRepository) FindByUserIDAndDate(userID string, workDate time.Time) (analysismodel.DailySummarySet, error) {
-	return r.store.FindDailyByUserIDAndDate(userID, workDate)
+	summary, err := r.store.FindDailyByUserIDAndDate(userID, workDate)
+	if errors.Is(err, memory.ErrNotFound) {
+		return analysismodel.DailySummarySet{}, repositories.ErrNotFound
+	}
+	return summary, err
 }
 
 type MonthlyAchievementRepository struct {

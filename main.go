@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
+	"time_management/domain/time_tracking/attestation"
 	trackingusecases "time_management/domain/time_tracking/usecases"
 	userusecases "time_management/domain/user/usecases"
+	easchain "time_management/infrastructure/blockchain/eas"
 	httphandlers "time_management/infrastructure/http/handlers"
 	httprouter "time_management/infrastructure/http/router"
 	memory "time_management/infrastructure/persistence/memory"
@@ -27,6 +31,33 @@ func main() {
 	dailyAchievementRepository := memoryachievement.NewDailyAchievementRepository(store)
 	monthlyAchievementRepository := memoryachievement.NewMonthlyAchievementRepository(store)
 
+	chain, err := easchain.NewBaseSepoliaFromEnv(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer chain.Close()
+	attestationWriter, err := attestation.NewWriterFromEnv(chain)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		log.Fatal(err)
+	}
+	attestationService, err := attestation.NewService(
+		attestationWriter,
+		workLogRepository,
+		breakLogRepository,
+		dailyTaskRepository,
+		weeklyTaskRepository,
+		dailyAchievementRepository,
+		store,
+		tokyo,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	userUsecase := userusecases.NewUserUsecase(store)
 	timeTrackingUsecase := trackingusecases.NewService(
 		workLogRepository,
@@ -46,6 +77,7 @@ func main() {
 		TimeTracking: httphandlers.NewTimeTrackingHandler(
 			timeTrackingUsecase,
 		),
+		Attestation: httphandlers.NewAttestationHandler(attestationService),
 	}
 
 	addr := ":" + env("PORT", "8080")

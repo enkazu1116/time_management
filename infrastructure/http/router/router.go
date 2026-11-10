@@ -10,6 +10,7 @@ type Handlers struct {
 	Health       *handlers.HealthHandler
 	User         *handlers.UserHandler
 	TimeTracking *handlers.TimeTrackingHandler
+	Attestation  *handlers.AttestationHandler
 }
 
 func New(handlers Handlers) http.Handler {
@@ -24,5 +25,7 @@ func New(handlers Handlers) http.Handler {
 	mux.HandleFunc("POST /summaries/daily", handlers.TimeTracking.CreateDailySummary)
 	mux.HandleFunc("POST /weekly-logs", handlers.TimeTracking.CreateWeeklyLog)
 	mux.HandleFunc("POST /summaries/monthly", handlers.TimeTracking.CreateMonthlySummary)
+	mux.HandleFunc("POST /attestations", handlers.Attestation.Attest)
+	mux.HandleFunc("GET /attestations/verify", handlers.Attestation.Verify)
 	return mux
 }

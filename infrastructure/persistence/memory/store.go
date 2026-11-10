@@ -29,6 +29,7 @@ type Store struct {
 
 	dailySummaries   map[string]analysismodel.DailySummarySet
 	monthlySummaries map[string]analysismodel.MonthlySummarySet
+	attestationUIDs  map[string][32]byte
 }
 
 func NewStore() *Store {
@@ -42,7 +43,26 @@ func NewStore() *Store {
 		weeklyLogs:       map[string]taskprogressmodel.WeeklyLog{},
 		dailySummaries:   map[string]analysismodel.DailySummarySet{},
 		monthlySummaries: map[string]analysismodel.MonthlySummarySet{},
+		attestationUIDs:  map[string][32]byte{},
 	}
+}
+
+func (s *Store) Save(userID, date, location string, uid [32]byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.attestationUIDs[attestationKey(userID, date, location)] = uid
+	return nil
+}
+
+func (s *Store) Latest(userID, date, location string) ([32]byte, bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	uid, found := s.attestationUIDs[attestationKey(userID, date, location)]
+	return uid, found, nil
+}
+
+func attestationKey(userID, date, location string) string {
+	return userID + "\x00" + date + "\x00" + location
 }
 
 func (s *Store) Create(user usermodel.User) error {
@@ -194,7 +214,7 @@ func (s *Store) FindBreakLogsByUserIDAndDate(userID string, workDate time.Time) 
 	day := normalizeDate(workDate)
 	breakLogs := []workrecordmodel.BreakLog{}
 	for _, breakLog := range s.breakLogs {
-		if breakLog.UserID == userID && sameDate(breakLog.StartedAt, day) {
+		if breakLog.UserID == userID && sameDateInLocation(breakLog.StartedAt, day) {
 			breakLogs = append(breakLogs, breakLog)
 		}
 	}
@@ -514,6 +534,13 @@ func normalizeWeekStart(value time.Time) time.Time {
 
 func sameDate(left time.Time, right time.Time) bool {
 	return normalizeDate(left).Equal(normalizeDate(right))
+}
+
+func sameDateInLocation(value time.Time, day time.Time) bool {
+	value = value.In(day.Location())
+	leftYear, leftMonth, leftDay := value.Date()
+	rightYear, rightMonth, rightDay := day.Date()
+	return leftYear == rightYear && leftMonth == rightMonth && leftDay == rightDay
 }
 
 func inDateRange(value time.Time, start time.Time, end time.Time) bool {
