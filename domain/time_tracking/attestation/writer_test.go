@@ -24,6 +24,10 @@ func (f *fakeChain) Attest(_ context.Context, payload Payload) ([32]byte, error)
 	return f.uid, f.err
 }
 
+func (f *fakeChain) Read(context.Context, [32]byte) (OnChainRecord, error) {
+	return OnChainRecord{}, f.err
+}
+
 func TestWriterAttestSendsOnlyDigestCommitmentAndReference(t *testing.T) {
 	chain := &fakeChain{uid: [32]byte{1}}
 	t.Setenv(HMACSecretEnv, "test-hmac-secret-with-at-least-32-bytes")

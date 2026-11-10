@@ -40,6 +40,9 @@ var (
 	ErrTransaction        = errors.New("eas: attestation transaction failed")
 	ErrReceipt            = errors.New("eas: attestation receipt failed")
 	ErrAttestedEvent      = errors.New("eas: valid Attested event not found")
+	ErrAttestationRead    = errors.New("eas: attestation read failed")
+	ErrAttestationInvalid = errors.New("eas: attestation does not match configured identity")
+	ErrAttestationRevoked = errors.New("eas: attestation is revoked")
 )
 
 type environmentConfig struct {
@@ -185,6 +188,50 @@ func encodeSchemaData(payload attestation.Payload) ([]byte, error) {
 	}
 	arguments := abi.Arguments{{Type: bytes32Type}, {Type: bytes32Type}}
 	return arguments.Pack(payload.DayDigest, payload.SubjectCommitment)
+}
+
+func (chain *BaseSepolia) Read(ctx context.Context, uid [32]byte) (attestation.OnChainRecord, error) {
+	record, err := chain.contract.getAttestation(&bind.CallOpts{Context: ctx}, uid)
+	if err != nil {
+		return attestation.OnChainRecord{}, ErrAttestationRead
+	}
+	return chain.validateRecord(uid, record)
+}
+
+func (chain *BaseSepolia) validateRecord(uid [32]byte, record attestationRecord) (attestation.OnChainRecord, error) {
+	if record.UID != uid || record.UID == ([32]byte{}) ||
+		record.Schema != chain.schemaUID ||
+		record.Attester != chain.attester {
+		return attestation.OnChainRecord{}, ErrAttestationInvalid
+	}
+	if record.RevocationTime != 0 {
+		return attestation.OnChainRecord{}, ErrAttestationRevoked
+	}
+	dayDigest, subjectCommitment, err := decodeSchemaData(record.Data)
+	if err != nil {
+		return attestation.OnChainRecord{}, ErrAttestationInvalid
+	}
+	return attestation.OnChainRecord{
+		DayDigest:         dayDigest,
+		SubjectCommitment: subjectCommitment,
+	}, nil
+}
+
+func decodeSchemaData(data []byte) ([32]byte, [32]byte, error) {
+	bytes32Type, err := abi.NewType("bytes32", "", nil)
+	if err != nil {
+		return [32]byte{}, [32]byte{}, err
+	}
+	values, err := (abi.Arguments{{Type: bytes32Type}, {Type: bytes32Type}}).Unpack(data)
+	if err != nil || len(values) != 2 {
+		return [32]byte{}, [32]byte{}, ErrAttestationInvalid
+	}
+	digest, digestOK := values[0].([32]byte)
+	commitment, commitmentOK := values[1].([32]byte)
+	if !digestOK || !commitmentOK {
+		return [32]byte{}, [32]byte{}, ErrAttestationInvalid
+	}
+	return digest, commitment, nil
 }
 
 func (chain *BaseSepolia) attestationUID(logs []*types.Log) ([32]byte, error) {

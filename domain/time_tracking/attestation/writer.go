@@ -32,9 +32,15 @@ type Payload struct {
 	RefUID            [sha256.Size]byte
 }
 
+type OnChainRecord struct {
+	DayDigest         [sha256.Size]byte
+	SubjectCommitment [sha256.Size]byte
+}
+
 // Chain hides transaction signing and EAS contract access from the domain.
 type Chain interface {
 	Attest(context.Context, Payload) ([sha256.Size]byte, error)
+	Read(context.Context, [sha256.Size]byte) (OnChainRecord, error)
 }
 
 type Writer struct {
@@ -85,6 +91,18 @@ func (w *Writer) Attest(ctx context.Context, records integrity.DayRecords, refUI
 		return [sha256.Size]byte{}, ErrAttestationFailed
 	}
 	return uid, nil
+}
+
+func (w *Writer) Read(ctx context.Context, uid [sha256.Size]byte) (OnChainRecord, error) {
+	record, err := w.chain.Read(ctx, uid)
+	if err != nil {
+		return OnChainRecord{}, ErrAttestationFailed
+	}
+	return record, nil
+}
+
+func (w *Writer) SubjectCommitment(records integrity.DayRecords) [sha256.Size]byte {
+	return subjectCommitment(w.hmacSecret, records)
 }
 
 func subjectCommitment(secret []byte, records integrity.DayRecords) [sha256.Size]byte {

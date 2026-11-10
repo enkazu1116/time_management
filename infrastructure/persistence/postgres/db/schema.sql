@@ -53,6 +53,15 @@ CREATE TABLE break_logs (
 CREATE INDEX break_logs_user_started_at_idx ON break_logs(user_id, started_at);
 CREATE INDEX break_logs_work_log_idx ON break_logs(work_log_id);
 
+CREATE TABLE daily_attestations (
+  user_id uuid NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  work_date date NOT NULL,
+  location_name text NOT NULL,
+  attestation_uid bytea NOT NULL CHECK (octet_length(attestation_uid) = 32),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY(user_id, work_date, location_name)
+);
+
 CREATE TABLE daily_achievements (
   daily_achievement_id uuid PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
