@@ -5,13 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-
-	"time_management/domain/shared/messages"
 )
 
 var (
-	ErrUUIDRequired = errors.New(messages.UUIDRequired)
-	ErrInvalidUUID  = errors.New(messages.InvalidUUID)
+	ErrUUIDRequired = errors.New("UUIDは必須です")
+	ErrInvalidUUID  = errors.New("UUIDの形式が不正です")
 )
 
 var uuidPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
