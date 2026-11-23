@@ -2,6 +2,9 @@ package usecases
 
 import (
 	"context"
+	"fmt"
+	"uuid"
+
 	"time_management/backend/domain/user/interfaces"
 	User "time_management/backend/domain/user/model"
 )
@@ -23,4 +26,12 @@ func NewUserUsecase(r interfaces.UserRepository) *UserUsecase {
 
 func (u *UserUsecase) CreateUser(ctx context.Context, user *User.User) error {
 	return u.userRepository.CreateUser(ctx, user)
+}
+
+func (u *UserUsecase) GetUserByID(ctx context.Context, id string) (*User.User, error) {
+	userID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id: %w", err)
+	}
+	return u.userRepository.GetUserById(ctx, userID)
 }

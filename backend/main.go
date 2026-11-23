@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"time_management/backend/internal/di"
 )
@@ -16,6 +17,8 @@ func main() {
 	}
 	defer container.Close()
 
-	// 以降は container から依存を取り出す
-	_ = container
+	if err := http.ListenAndServe(":8080", container.Router); err != nil {
+		log.Fatal(err)
+	}
+
 }

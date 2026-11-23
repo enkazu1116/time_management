@@ -3,12 +3,14 @@ package di
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	userinterfaces "time_management/backend/domain/user/interfaces"
 	userusecases "time_management/backend/domain/user/usecases"
 	"time_management/backend/internal/db/connection"
 	"time_management/backend/internal/db/sqlc"
-	"time_management/backend/internal/repository"
+	apihttp "time_management/backend/internal/http"
+	"time_management/backend/internal/http/handlers"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -16,12 +18,14 @@ import (
 /*
  * Container
  * アプリ全体の依存関係をここに集約する。
- * ドメインが増えたら Repositories / Usecases と NewContainer の組み立てだけ足す。
+ * ドメインが増えたら ○○Infrastructure を追加して NewContainer に1行足す。
  */
 type Container struct {
 	DB           *pgxpool.Pool
 	Repositories Repositories
 	Usecases     Usecases
+	Handlers     Handlers
+	Router       http.Handler
 }
 
 type Repositories struct {
@@ -32,6 +36,10 @@ type Usecases struct {
 	User *userusecases.UserUsecase
 }
 
+type Handlers struct {
+	User *handlers.UserHandler
+}
+
 func NewContainer(ctx context.Context) (*Container, error) {
 	pool, err := connection.DBConnect(ctx)
 	if err != nil {
@@ -39,17 +47,20 @@ func NewContainer(ctx context.Context) (*Container, error) {
 	}
 
 	queries := sqlc.New(pool)
-
-	userRepo := repository.NewUserRepository(queries)
+	userInfra := NewUsersInfrastructure(queries)
 
 	return &Container{
 		DB: pool,
 		Repositories: Repositories{
-			User: userRepo,
+			User: userInfra.Repo,
 		},
 		Usecases: Usecases{
-			User: userusecases.NewUserUsecase(userRepo),
+			User: userInfra.Usecase,
 		},
+		Handlers: Handlers{
+			User: userInfra.Handler,
+		},
+		Router: apihttp.NewRouter(userInfra.Handler),
 	}, nil
 }
 
