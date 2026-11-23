@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"time"
-	"uuid"
 
-	User "time_management/backend/domain/user/model"
-	valueobjects "time_management/backend/domain/user/model/valueObjects"
+	"time_management/backend/domain/user/dto"
 	userusecases "time_management/backend/domain/user/usecases"
+	"time_management/backend/internal/http/responses"
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5"
@@ -24,72 +22,36 @@ func NewUserHandler(usecase *userusecases.UserUsecase) *UserHandler {
 }
 
 func (h *UserHandler) Register(r *mux.Router) {
-	r.HandleFunc("/users", h.Create).Methods(http.MethodPost)
-	r.HandleFunc("/users/{id}", h.GetByID).Methods(http.MethodGet)
+	r.HandleFunc("/users", h.create).Methods(http.MethodPost)
+	r.HandleFunc("/users/{id}", h.getByID).Methods(http.MethodGet)
 }
 
-type createUserRequest struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Password  string `json:"password"`
-	Email     string `json:"email"`
-}
-
-type userResponse struct {
-	UserID    string    `json:"user_id"`
-	UserName  string    `json:"user_name"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var req createUserRequest
+func (h *UserHandler) create(w http.ResponseWriter, r *http.Request) {
+	var req dto.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		responses.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	now := time.Now().UTC()
-	user := User.NewUser(
-		uuid.New(),
-		valueobjects.NewUserName(req.FirstName, req.LastName),
-		valueobjects.NewPassword(req.Password),
-		valueobjects.NewEmailAddress(req.Email),
-		now,
-		now,
-		time.Time{},
-	)
-
-	if err := h.usecase.CreateUser(r.Context(), user); err != nil {
-		WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	res, err := h.usecase.CreateUser(r.Context(), req)
+	if err != nil {
+		responses.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	WriteJSON(w, http.StatusCreated, toUserResponse(user))
+	responses.WriteJSON(w, http.StatusCreated, res)
 }
 
-func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["id"]
-	user, err := h.usecase.GetUserByID(r.Context(), id)
+func (h *UserHandler) getByID(w http.ResponseWriter, r *http.Request) {
+	res, err := h.usecase.GetUserByID(r.Context(), mux.Vars(r)["id"])
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			WriteJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+			responses.WriteError(w, http.StatusNotFound, "user not found")
 			return
 		}
-		WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		responses.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, toUserResponse(user))
-}
-
-func toUserResponse(user *User.User) userResponse {
-	return userResponse{
-		UserID:    user.UserID.String(),
-		UserName:  user.UserName.GetFullName(),
-		Email:     user.Email.String(),
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-	}
+	responses.WriteJSON(w, http.StatusOK, res)
 }
