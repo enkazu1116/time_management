@@ -2,8 +2,8 @@ package model
 
 import (
 	"time"
-	model "time_management/backend/domain/shared"
 	valueobjects "time_management/backend/domain/user/model/valueObjects"
+	"uuid"
 )
 
 /*
@@ -11,7 +11,7 @@ import (
  * AuditLogはアーキテクチャ上必要となるため、ドメインに含める
  */
 type User struct {
-	UserID    model.UUID                 `json:"user_id"`
+	UserID    uuid.UUID                  `json:"user_id"`
 	UserName  *valueobjects.UserName     `json:"user_name"`
 	Password  *valueobjects.Password     `json:"password"`
 	Email     *valueobjects.EmailAddress `json:"email"`
@@ -21,7 +21,7 @@ type User struct {
 }
 
 func NewUser(
-	userID model.UUID,
+	userID uuid.UUID,
 	userName *valueobjects.UserName,
 	password *valueobjects.Password,
 	email *valueobjects.EmailAddress,

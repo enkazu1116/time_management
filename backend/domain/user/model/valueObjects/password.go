@@ -18,6 +18,13 @@ func NewPassword(password string) *Password {
 	}
 }
 
+func (p *Password) String() string {
+	if p == nil {
+		return ""
+	}
+	return p.password
+}
+
 func (p *Password) validatePassword() error {
 	if p.password == "" {
 		return errors.New(PASSWORD_EMPTY_ERROR_MESSAGE)
