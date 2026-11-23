@@ -1,11 +1,11 @@
 package connection
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
-	"log"
 	"os"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
@@ -21,15 +21,9 @@ const (
 	DB_NAME     = "DB_NAME"
 )
 
-type DBServer struct {
-	DB *sql.DB
-}
-
-func DBConnect() (*sql.DB, error) {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal(DB_CONNECTION_ERROR)
-		return nil, err
+func DBConnect(ctx context.Context) (*pgxpool.Pool, error) {
+	if err := godotenv.Load(); err != nil {
+		return nil, fmt.Errorf("%s: %w", DB_CONNECTION_ERROR, err)
 	}
 
 	dbUser := os.Getenv(DB_USER)
@@ -38,11 +32,24 @@ func DBConnect() (*sql.DB, error) {
 	dbPort := os.Getenv(DB_PORT)
 	dbName := os.Getenv(DB_NAME)
 
-	db, err := sql.Open("postgres", fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s sslmode=disable", dbUser, dbPassword, dbHost, dbPort, dbName))
-	if err != nil {
-		log.Fatal(DB_CONNECTION_ERROR)
-		return nil, err
+	if dbUser == "" || dbPassword == "" || dbHost == "" || dbPort == "" || dbName == "" {
+		return nil, fmt.Errorf("%s", DB_CONNECTION_ERROR)
 	}
 
-	return db, nil
+	dsn := fmt.Sprintf(
+		"user=%s password=%s host=%s port=%s dbname=%s sslmode=disable",
+		dbUser, dbPassword, dbHost, dbPort, dbName,
+	)
+
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", DB_CONNECTION_ERROR, err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("%s: %w", DB_CONNECTION_ERROR, err)
+	}
+
+	return pool, nil
 }

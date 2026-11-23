@@ -1,17 +1,21 @@
 package main
 
 import (
+	"context"
 	"log"
-	"time_management/backend/internal/db/connection"
+
+	"time_management/backend/internal/di"
 )
 
 func main() {
+	ctx := context.Background()
 
-	db, err := connection.DBConnect()
+	container, err := di.NewContainer(ctx)
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
-	defer db.Close()
+	defer container.Close()
 
+	// 以降は container から依存を取り出す
+	_ = container
 }
