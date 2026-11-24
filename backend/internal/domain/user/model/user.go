@@ -2,7 +2,7 @@ package model
 
 import (
 	"time"
-	valueobjects "time_management/backend/domain/user/model/valueObjects"
+	valueobjects "time_management/backend/internal/domain/user/model/valueObjects"
 	"uuid"
 )
 

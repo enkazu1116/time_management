@@ -3,7 +3,7 @@ package http
 import (
 	"net/http"
 
-	"time_management/backend/internal/http/handlers"
+	"time_management/backend/internal/infrastrcture/http/handlers"
 
 	"github.com/gorilla/mux"
 )

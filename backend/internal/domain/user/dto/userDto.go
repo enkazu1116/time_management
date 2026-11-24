@@ -3,8 +3,8 @@ package dto
 import (
 	"time"
 
-	User "time_management/backend/domain/user/model"
-	"time_management/backend/internal/util/jst"
+	User "time_management/backend/internal/domain/user/model"
+	"time_management/backend/internal/infrastrcture/jst"
 )
 
 type CreateUserRequest struct {

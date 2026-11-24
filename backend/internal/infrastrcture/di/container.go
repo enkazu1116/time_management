@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
-	userinterfaces "time_management/backend/domain/user/interfaces"
-	userusecases "time_management/backend/domain/user/usecases"
-	"time_management/backend/internal/db/connection"
-	"time_management/backend/internal/db/sqlc"
-	apihttp "time_management/backend/internal/http"
-	"time_management/backend/internal/http/handlers"
+	userinterfaces "time_management/backend/internal/domain/user/interfaces"
+	userusecases "time_management/backend/internal/domain/user/usecases"
+	"time_management/backend/internal/infrastrcture/db/connection"
+	"time_management/backend/internal/infrastrcture/db/sqlc"
+	apihttp "time_management/backend/internal/infrastrcture/http"
+	"time_management/backend/internal/infrastrcture/http/handlers"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

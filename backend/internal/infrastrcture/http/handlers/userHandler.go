@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	"time_management/backend/domain/user/dto"
-	userusecases "time_management/backend/domain/user/usecases"
-	"time_management/backend/internal/http/responses"
+	"time_management/backend/internal/domain/user/dto"
+	userusecases "time_management/backend/internal/domain/user/usecases"
+	"time_management/backend/internal/infrastrcture/http/responses"
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5"

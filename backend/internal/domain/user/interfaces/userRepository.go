@@ -2,7 +2,7 @@ package interfaces
 
 import (
 	"context"
-	User "time_management/backend/domain/user/model"
+	User "time_management/backend/internal/domain/user/model"
 	"uuid"
 )
 

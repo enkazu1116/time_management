@@ -6,11 +6,11 @@ import (
 	"time"
 	"uuid"
 
-	"time_management/backend/domain/user/dto"
-	"time_management/backend/domain/user/interfaces"
-	User "time_management/backend/domain/user/model"
-	valueobjects "time_management/backend/domain/user/model/valueObjects"
-	"time_management/backend/internal/util/jst"
+	"time_management/backend/internal/domain/user/dto"
+	"time_management/backend/internal/domain/user/interfaces"
+	User "time_management/backend/internal/domain/user/model"
+	valueobjects "time_management/backend/internal/domain/user/model/valueObjects"
+	"time_management/backend/internal/infrastrcture/jst"
 )
 
 type UserUsecase struct {

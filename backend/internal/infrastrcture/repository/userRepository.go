@@ -4,9 +4,9 @@ import (
 	"context"
 	"uuid"
 
-	User "time_management/backend/domain/user/model"
-	valueobjects "time_management/backend/domain/user/model/valueObjects"
-	"time_management/backend/internal/db/sqlc"
+	User "time_management/backend/internal/domain/user/model"
+	valueobjects "time_management/backend/internal/domain/user/model/valueObjects"
+	"time_management/backend/internal/infrastrcture/db/sqlc"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )

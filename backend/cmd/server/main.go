@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"time_management/backend/internal/di"
+	"time_management/backend/internal/infrastrcture/di"
 )
 
 func main() {

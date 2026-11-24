@@ -1,11 +1,11 @@
 package di
 
 import (
-	"time_management/backend/domain/user/interfaces"
-	"time_management/backend/domain/user/usecases"
-	"time_management/backend/internal/db/sqlc"
-	"time_management/backend/internal/http/handlers"
-	"time_management/backend/internal/repository"
+	"time_management/backend/internal/domain/user/interfaces"
+	"time_management/backend/internal/domain/user/usecases"
+	"time_management/backend/internal/infrastrcture/db/sqlc"
+	"time_management/backend/internal/infrastrcture/http/handlers"
+	"time_management/backend/internal/infrastrcture/repository"
 )
 
 /*
