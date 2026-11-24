@@ -22,6 +22,13 @@ func NewEmailAddress(emailAddress string) *EmailAddress {
 	}
 }
 
+func (e *EmailAddress) String() string {
+	if e == nil {
+		return ""
+	}
+	return e.emailAddress
+}
+
 func (e *EmailAddress) validateEmailAddress() error {
 	if e.emailAddress == "" {
 		return errors.New(EMAIL_ADDRESS_EMPTY_ERROR_MESSAGE)
